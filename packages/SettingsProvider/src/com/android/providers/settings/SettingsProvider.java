@@ -213,6 +213,7 @@ public class SettingsProvider extends ContentProvider {
     private static final Set<String> CRITICAL_SECURE_SETTINGS = new ArraySet<>();
     static {
         CRITICAL_SECURE_SETTINGS.add(Settings.Secure.USER_SETUP_COMPLETE);
+        CRITICAL_SECURE_SETTINGS.add(Settings.Secure.TV_USER_SETUP_COMPLETE);
     }
 
     // Per user secure settings that moved to the for all users global settings.
@@ -1687,18 +1688,9 @@ public class SettingsProvider extends ContentProvider {
     }
 
     private List<String> getSettingsNamesLocked(int settingsType, int userId) {
-        boolean instantApp;
-        if (UserHandle.getAppId(Binder.getCallingUid()) < Process.FIRST_APPLICATION_UID) {
-            instantApp = false;
-        } else {
-            ApplicationInfo ai = getCallingApplicationInfoOrThrow();
-            instantApp = ai.isInstantApp();
-        }
-        if (instantApp) {
-            return new ArrayList<String>(getInstantAppAccessibleSettings(settingsType));
-        } else {
-            return mSettingsRegistry.getSettingsNamesLocked(settingsType, userId);
-        }
+        // Don't enforce the instant app whitelist for now -- its too prone to unintended breakage
+        // in the current form.
+        return mSettingsRegistry.getSettingsNamesLocked(settingsType, userId);
     }
 
     private void enforceSettingReadable(String settingName, int settingsType, int userId) {
@@ -1711,8 +1703,10 @@ public class SettingsProvider extends ContentProvider {
         }
         if (!getInstantAppAccessibleSettings(settingsType).contains(settingName)
                 && !getOverlayInstantAppAccessibleSettings(settingsType).contains(settingName)) {
-            throw new SecurityException("Setting " + settingName + " is not accessible from"
-                    + " ephemeral package " + getCallingPackage());
+            // Don't enforce the instant app whitelist for now -- its too prone to unintended
+            // breakage in the current form.
+            Slog.w(LOG_TAG, "Instant App " + ai.packageName
+                    + " trying to access unexposed setting, this will be an error in the future.");
         }
     }
 
@@ -3401,6 +3395,18 @@ public class SettingsProvider extends ContentProvider {
 
                 if (currentVersion == 144) {
                     // Version 145: Removed
+                    // Repurpose for AndroidTV devices coming from N
+                    final SettingsState secureSettings = getSecureSettingsLocked(userId);
+                    String defaultTvSetupSetting = (getContext().getResources().getString(
+                            R.string.def_tv_user_setup_complete));
+                    String currentUserSetupSetting = secureSettings.getSettingLocked(
+                            Settings.Secure.USER_SETUP_COMPLETE).getValue();
+                    if (defaultTvSetupSetting != null && !defaultTvSetupSetting.isEmpty() &&
+                            currentUserSetupSetting == "1") {
+                        secureSettings.insertSettingLocked(
+                                Settings.Secure.TV_USER_SETUP_COMPLETE, "1",
+                                null, true, SettingsState.SYSTEM_PACKAGE_NAME);
+                    }
                     currentVersion = 145;
                 }
 

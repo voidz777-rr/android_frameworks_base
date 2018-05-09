@@ -20,7 +20,7 @@
   <string name="quick_settings_rr_label">Gelişmiş ayarlar</string>
   <!-- Power menu -->
   <string name="global_action_restart_advanced">Gelişmiş</string>
-  <string name="global_action_restart_recovery">Kurtarma modu</string>
+  <string name="global_action_restart_recovery">Kurtarma</string>
   <string name="global_action_restart_bootloader">Ön yükleyici</string>
   <string name="global_action_restart_ui">Sistem arayüzü</string>
   <string name="global_action_restart_hot">Hızlı</string>
@@ -58,7 +58,7 @@
   <string name="systemui_tuner_navbar_title">Varsayılan ayarlar</string>
   <!-- QS Tiles -->
   <string name="quick_settings_reboot_label">Yeniden başlat</string>
-  <string name="quick_settings_reboot_recovery_label">Kurtarma modu</string>
+  <string name="quick_settings_reboot_recovery_label">Kurtarma</string>
   <!-- Partial Screenshot -->
   <string name="screenshot_abort_title">Ekran görüntüsü alınamadı</string>
   <string name="screenshot_abort_text">İşlem iptal edildi.</string>
@@ -99,6 +99,12 @@
   <string name="quick_settings_sound_ring">Zil sesi</string>
   <string name="quick_settings_sound_vibrate">Titreşim</string>
   <string name="quick_settings_sound_silent">Sessiz</string>
+  <!-- Sound Search TIle -->
+  <string name="quick_settings_sound_search">Sesli arama</string>
+  <!-- Google Assist Tiles -->
+  <string name="quick_settings_google_assist_label">Asistan</string>
+  <string name="quick_settings_google_voice_assist_label">Sesli asistan</string>
+  <string name="quick_settings_google_now_label">Google beslemesi</string>
   <!-- Ambient Display Tile -->
   <string name="quick_settings_ambient_display_label">Ortam ekranı</string>
   <!-- Content description of the ambient display tile in quick settings when off (not shown on the screen). [CHAR LIMIT=NONE] -->
@@ -193,4 +199,10 @@
   <string name="force_stop_dlg_text">Bir uygulamayı zorla durdurursanız, bir hata ile karşılaşabilirsiniz.</string>
   <string name="kill">Uygulamayı Sonlandır</string>
   <!-- Recents free RAM -->
+  <string name="recents_free_ram">Boş RAM: %1$d MB</string>
+  <!-- SmartPixels QS Tile -->
+  <string name="quick_settings_smart_pixels">Akıllı Pikseller</string>
+  <string name="quick_settings_smart_pixels_on_power_save">Otomatik olarak akıllı pikselleri etkinleştir</string>
+  <!-- Accessibility label for button to open running apps prefscreen [CHAR LIMIT=NONE] -->
+  <string name="accessibility_quick_settings_running_services">Çalışan hizmetler ekranını aç.</string>
 </resources>
