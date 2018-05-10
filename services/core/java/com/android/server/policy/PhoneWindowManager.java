@@ -206,7 +206,6 @@ import android.service.vr.IPersistentVrStateCallbacks;
 import android.service.gesture.EdgeGestureManager;
 import android.speech.RecognizerIntent;
 import android.telecom.TelecomManager;
-import android.util.BoostFramework;
 import android.util.DisplayMetrics;
 import android.util.EventLog;
 import android.util.Log;
@@ -530,17 +529,6 @@ public class PhoneWindowManager implements WindowManagerPolicy {
     Handler mHandler;
     WindowState mLastInputMethodWindow = null;
     WindowState mLastInputMethodTargetWindow = null;
-
-    private BoostFramework mPerfKey = null;
-    private BoostFramework mPerfRotation = null;
-    private boolean lIsPerfBoostEnabled;
-    private int[] mBoostParamValWeak;
-    private int[] mBoostParamValStrong;
-    private boolean mKeypressBoostBlocked;
-    private long mBoostEventTime = 0L;
-    private int mLastBoostDuration = 0;
-    private final int ROTATION_BOOST_TIMEOUT = 5000 /*ms*/;
-    private final int ROTATION_BOOST_FADE = 300 /*ms*/;
 
     // FIXME This state is shared between the input reader and handler thread.
     // Technically it's broken and buggy but it has been like this for many years
@@ -982,10 +970,6 @@ public class PhoneWindowManager implements WindowManagerPolicy {
     private boolean mClearedBecauseOfForceShow;
     private boolean mTopWindowIsKeyguard;
 
-    // BoostFramework constants
-    private static final int MSG_DISPATCH_KEYPRESS_BOOST_UNBLOCK = 100;
-    private static final int MSG_RELEASE_ROTATION_LOCK = 101;
-
     private class PolicyHandler extends Handler {
         @Override
         public void handleMessage(Message msg) {
@@ -1095,12 +1079,6 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                 case HardkeyActionHandler.MSG_DO_HAPTIC_FB:
                     performHapticFeedbackLw(null,
                             HapticFeedbackConstants.LONG_PRESS, false);
-
-                case MSG_DISPATCH_KEYPRESS_BOOST_UNBLOCK:
-                    mKeypressBoostBlocked = false;
-                    break;
-                case MSG_RELEASE_ROTATION_LOCK:
-                    mPerfRotation.perfLockRelease();
                     break;
             }
         }
@@ -1258,13 +1236,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             public void run() {
                 // send interaction hint to improve redraw performance
                 mPowerManagerInternal.powerHint(PowerHint.INTERACTION, 0);
-                if (lIsPerfBoostEnabled) {
-                    mPerfRotation.perfLockAcquire(ROTATION_BOOST_TIMEOUT, mBoostParamValStrong);
-                }
                 updateRotation(false);
-                if (lIsPerfBoostEnabled) {
-                    mHandler.sendEmptyMessageDelayed(MSG_RELEASE_ROTATION_LOCK, ROTATION_BOOST_FADE);
-                }
             }
         };
 
@@ -2284,18 +2256,6 @@ public class PhoneWindowManager implements WindowManagerPolicy {
         mAccessibilityShortcutController =
                 new AccessibilityShortcutController(mContext, new Handler(), mCurrentUserId);
         mAlarmManager = (AlarmManager) mContext.getSystemService(Context.ALARM_SERVICE);
-
-        // Initialise Keypress Boost
-        mBoostParamValWeak = context.getResources().getIntArray(
-                com.android.internal.R.array.qboost_weak_param_value);
-        mBoostParamValStrong = context.getResources().getIntArray(
-                com.android.internal.R.array.qboost_strong_param_value);
-        lIsPerfBoostEnabled = mBoostParamValWeak.length != 0
-                && mBoostParamValStrong.length != 0;
-        if (lIsPerfBoostEnabled) {
-            mPerfKey = new BoostFramework();
-            mPerfRotation = new BoostFramework();
-        }
 
         // Init display burn-in protection
         boolean burnInProtectionEnabled = context.getResources().getBoolean(
@@ -4829,48 +4789,6 @@ public class PhoneWindowManager implements WindowManagerPolicy {
         return mSearchManager;
     }
 
-    private void dispatchKeypressBoost(int keyCode) {
-        int boostDuration = 0;
-        int[] boostParamVal = mBoostParamValWeak;
-
-        // Calculate the duration of the boost
-        switch (keyCode) {
-            case KeyEvent.KEYCODE_UNKNOWN:
-                mLastBoostDuration = 0;
-                return;
-            case KeyEvent.KEYCODE_APP_SWITCH:
-            case KeyEvent.KEYCODE_BACK:
-            case KeyEvent.KEYCODE_ENTER:
-            case KeyEvent.KEYCODE_HOME:
-            case KeyEvent.KEYCODE_SOFT_LEFT:
-            case KeyEvent.KEYCODE_SOFT_RIGHT:
-                boostDuration = 300;
-                break;
-            case KeyEvent.KEYCODE_CAMERA:
-            case KeyEvent.KEYCODE_POWER:
-                boostDuration = 500;
-                boostParamVal = mBoostParamValStrong;
-                break;
-            case KeyEvent.KEYCODE_MEDIA_PLAY:
-                boostDuration = 650;
-                break;
-        }
-
-        // Dispatch the boost
-        if (boostDuration != 0) {
-            mLastBoostDuration = boostDuration;
-            Slog.i(TAG, "Dispatching Keypress boost for " + boostDuration + " ms.");
-            mPerfKey.perfLockAcquire(boostDuration, boostParamVal);
-
-            // Block Keypress boost
-            mKeypressBoostBlocked = true;
-
-            // Calculate unblock time and dispatch delayed unblock MSG
-            int boostBlockTime = boostDuration + 50/*ms*/;
-            mHandler.sendEmptyMessageDelayed(MSG_DISPATCH_KEYPRESS_BOOST_UNBLOCK, boostBlockTime);
-        }
-    }
-
     private void preloadRecentApps() {
         mPreloadedRecentApps = true;
         StatusBarManagerInternal statusbar = getStatusBarManagerInternal();
@@ -6880,12 +6798,9 @@ public class PhoneWindowManager implements WindowManagerPolicy {
         final boolean interactive = (policyFlags & FLAG_INTERACTIVE) != 0;
         final boolean down = event.getAction() == KeyEvent.ACTION_DOWN;
         final boolean canceled = event.isCanceled();
-        final int flags = event.getFlags();
         final int keyCode = event.getKeyCode();
-        final int repeatCount = event.getRepeatCount();
 
         final boolean isInjected = (policyFlags & WindowManagerPolicy.FLAG_INJECTED) != 0;
-        final boolean longPress = (flags & KeyEvent.FLAG_LONG_PRESS) != 0;
 
         final boolean appSwitchKey = keyCode == KeyEvent.KEYCODE_APP_SWITCH;
         final boolean homeKey = keyCode == KeyEvent.KEYCODE_HOME;
@@ -6929,26 +6844,6 @@ public class PhoneWindowManager implements WindowManagerPolicy {
 /*                && !navBarKey */
                 && (appSwitchKey || homeKey || menuKey || backKey)) {
             return 0;
-        }
-
-        // Intercept the Keypress event for Keypress boost
-        if (lIsPerfBoostEnabled) {
-            if (down && !longPress && repeatCount == 0 || down && longPress && repeatCount == 1) {
-                final long boostEventTime = mBoostEventTime;
-                mBoostEventTime = SystemClock.uptimeMillis();
-                if (boostEventTime != 0L) { // we had a previous boost
-                    final long boostEventTimeDiff = mBoostEventTime - boostEventTime;
-                    final boolean reBoostByDiff = boostEventTimeDiff >= ((long) mLastBoostDuration - 150L)
-                            && boostEventTimeDiff <= ((long) mLastBoostDuration - 50L);
-                    if (mKeypressBoostBlocked && mLastBoostDuration != 0 && reBoostByDiff) {
-                        // We have a few milliseconds remaining from our previous boost, release current boost before triggering next one.
-                        mHandler.removeMessages(MSG_DISPATCH_KEYPRESS_BOOST_UNBLOCK);
-                        mPerfKey.perfLockRelease();
-                        mKeypressBoostBlocked = false;
-                    }
-                }
-                dispatchKeypressBoost(keyCode);
-            }
         }
 
         // Basic policy based on interactive state.
@@ -7005,7 +6900,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
 
         boolean useHapticFeedback = down
                 && (policyFlags & WindowManagerPolicy.FLAG_VIRTUAL) != 0
-                && repeatCount == 0
+                && event.getRepeatCount() == 0
                 && !isHwKeysDisabled();
 
         // Specific device key handling
