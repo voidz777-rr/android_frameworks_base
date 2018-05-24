@@ -862,4 +862,7 @@
     <!-- Home button padding for sizing -->
     <dimen name="home_padding">15dp</dimen>
 
+    <!-- Rounded Corner Overlay -->
+    <dimen name="rounded_corner_fuckedup_radius">0.0dip</dimen>
+
 </resources>
