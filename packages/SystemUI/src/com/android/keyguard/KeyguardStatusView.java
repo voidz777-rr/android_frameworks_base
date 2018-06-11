@@ -531,7 +531,7 @@ public class KeyguardStatusView extends GridLayout implements
                 getResources().getDimensionPixelSize(R.dimen.lock_clock_font_size_77));
         } else if (size == 78) {
         mClockView.setTextSize(TypedValue.COMPLEX_UNIT_PX,
-                getResources().getDimensionPixelSize(R.dimen.widget_big_font_size));
+                getResources().getDimensionPixelSize(R.dimen.lock_clock_font_size_78));
         } else if (size == 79) {
         mClockView.setTextSize(TypedValue.COMPLEX_UNIT_PX,
                 getResources().getDimensionPixelSize(R.dimen.lock_clock_font_size_79));
@@ -671,7 +671,7 @@ public class KeyguardStatusView extends GridLayout implements
                 getResources().getDimensionPixelSize(R.dimen.lock_date_font_size_13));
         } else if (size == 14) {
         mDateView.setTextSize(TypedValue.COMPLEX_UNIT_PX,
-                getResources().getDimensionPixelSize(R.dimen.widget_label_font_size));
+                getResources().getDimensionPixelSize(R.dimen.lock_date_font_size_14));
         }  else if (size == 15) {
         mDateView.setTextSize(TypedValue.COMPLEX_UNIT_PX,
                 getResources().getDimensionPixelSize(R.dimen.lock_date_font_size_15));
